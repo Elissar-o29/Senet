@@ -1,9 +1,11 @@
 package Algorithms;
 import structure.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ExpectiMinimax {
 
+    private static final int MAX_DEPTH = 4; // Adjust based on performance needs
     private static final double WIN_SCORE = 10000.0;
     private static final double LOSE_SCORE = -10000.0;
 
@@ -37,7 +39,7 @@ public class ExpectiMinimax {
                 
                 if (newStone == null) continue;
                 
-                MoveLogic.moveStone(newState, newStone, steps);
+                MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode for simulation
                 
                 // Evaluate this move
                 double value = expectiminimax(newState, depth - 1, false) * probability;
@@ -112,7 +114,7 @@ public class ExpectiMinimax {
             
             if (newStone == null) continue;
             
-            MoveLogic.moveStone(newState, newStone, steps);
+            MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode for simulation
             newState.currentPlayer = (newState.currentPlayer == ColorType.BLACK) ? 
                 ColorType.WHITE : ColorType.BLACK;
             
@@ -149,7 +151,7 @@ public class ExpectiMinimax {
             
             if (newStone == null) continue;
             
-            MoveLogic.moveStone(newState, newStone, steps);
+            MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode for simulation
             newState.currentPlayer = (newState.currentPlayer == ColorType.BLACK) ? 
                 ColorType.WHITE : ColorType.BLACK;
             

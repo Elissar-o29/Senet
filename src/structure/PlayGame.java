@@ -144,7 +144,7 @@ public class PlayGame {
             
             if (simulatedStone == null) continue;
             
-            MoveLogic.moveStone(simulatedState, simulatedStone, steps);
+            MoveLogic.moveStone(simulatedState, simulatedStone, steps, true); // Silent mode
             
             // Evaluate using expectiminimax
             simulatedState.currentPlayer = ColorType.WHITE; // Next turn
@@ -185,7 +185,7 @@ public class PlayGame {
                     
                     GameState newState = state.copy();
                     Stone newStone = findStoneInCopiedState(newState, stone);
-                    MoveLogic.moveStone(newState, newStone, steps);
+                    MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode
                     newState.currentPlayer = ColorType.WHITE;
                     
                     double value = expectiminimaxEval(newState, depth - 1, false);
@@ -201,7 +201,7 @@ public class PlayGame {
                     
                     GameState newState = state.copy();
                     Stone newStone = findStoneInCopiedState(newState, stone);
-                    MoveLogic.moveStone(newState, newStone, steps);
+                    MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode
                     newState.currentPlayer = ColorType.BLACK;
                     
                     double value = expectiminimaxEval(newState, depth - 1, true);

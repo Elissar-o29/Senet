@@ -8,9 +8,16 @@ import structure.Stone;
 public class MoveLogic {
 
     // =========================
-    // تحريك حجر واحد
+    // تحريك حجر واحد (with output)
     // =========================
     public static void moveStone(GameState state, Stone stone, int steps) {
+        moveStone(state, stone, steps, false);
+    }
+
+    // =========================
+    // تحريك حجر واحد (with optional silent mode)
+    // =========================
+    public static void moveStone(GameState state, Stone stone, int steps, boolean silent) {
 
         // =========================
         // تحقق أولي
@@ -19,7 +26,7 @@ public class MoveLogic {
             return;
 
         if (stone.position == SpecialSquares.water) {
-            moveStoneToReBirth(state, stone);
+            moveStoneToReBirth(state, stone, silent);
             return;
         }
         // =========================
@@ -28,8 +35,10 @@ public class MoveLogic {
         // إذا الحجر على مربع 28 (threeTruths) يجب أن يكون الرمي 3 بالضبط
         if (stone.position == SpecialSquares.threeTruths) {
             if (steps != 3) {
-                System.out.println("Illegal move: stone on square 28 requires exactly 3. Moving back to rebirth.");
-                moveStoneToReBirth(state, stone);
+                if (!silent) {
+                    System.out.println("Illegal move: stone on square 28 requires exactly 3. Moving back to rebirth.");
+                }
+                moveStoneToReBirth(state, stone, silent);
                 return;
             }
         }
@@ -37,9 +46,11 @@ public class MoveLogic {
         // إذا الحجر على مربع 29 (reAtoum) يجب أن يكون الرمي 2 بالضبط للخروج
         if (stone.position == SpecialSquares.reAtoum) {
             if (steps != 2) {
-                System.out.println(
-                        "Illegal move: stone on square 29 requires exactly 2 to exit. Moving back to rebirth.");
-                moveStoneToReBirth(state, stone);
+                if (!silent) {
+                    System.out.println(
+                            "Illegal move: stone on square 29 requires exactly 2 to exit. Moving back to rebirth.");
+                }
+                moveStoneToReBirth(state, stone, silent);
                 return;
             }
         }
@@ -50,12 +61,16 @@ public class MoveLogic {
         if (stone.position < SpecialSquares.happiness &&
                 newPos > SpecialSquares.happiness) {
 
-            System.out.println("Illegal move: must stop at square 26 first.");
+            if (!silent) {
+                System.out.println("Illegal move: must stop at square 26 first.");
+            }
             return;
         }
 
         if (oldPos < 26 && newPos > 26) {
-            System.out.println("Illegal move: must stop at square 26 first.");
+            if (!silent) {
+                System.out.println("Illegal move: must stop at square 26 first.");
+            }
             return;
         }
         // =========================
@@ -72,7 +87,9 @@ public class MoveLogic {
         // 2. نفس اللون → حركة ممنوعة
         // =========================
         if (target.color == stone.color) {
-            System.out.println("Illegal move: same color stone.");
+            if (!silent) {
+                System.out.println("Illegal move: same color stone.");
+            }
             return;
         }
 
@@ -120,13 +137,18 @@ public class MoveLogic {
     // =========================
     // نقل مباشر لمربع معين
     // =========================
-    public static void moveStoneToReBirth(
-            GameState state, Stone stone) {
+    public static void moveStoneToReBirth(GameState state, Stone stone) {
+        moveStoneToReBirth(state, stone, false);
+    }
+
+    public static void moveStoneToReBirth(GameState state, Stone stone, boolean silent) {
 
         int targetPos = findRebirthPosition(state);
 
         if (targetPos == -1) {
-            System.out.println("No valid rebirth position!");
+            if (!silent) {
+                System.out.println("No valid rebirth position!");
+            }
             return;
         }
 
