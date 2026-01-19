@@ -6,15 +6,15 @@ import structure.SpecialSquares;
 public class Senet {
 
     public static void main(String[] args) throws Exception {
-        GameState state = new GameState();
+
         Senet senetGame = new Senet();
-        senetGame.getInitState(state);
+        GameState state = senetGame.getInitState();
         senetGame.printBoard(state);
 
     }
 
-    public GameState getInitState(GameState gameState) {
-        GameState initState = gameState;
+    public GameState getInitState() {
+        GameState initState = new GameState();
         for (int i = 0; i < 7; i++) {
             Stone whiteStone = new Stone(ColorType.WHITE, 2 * i + 1);
             initState.whiteStones.add(whiteStone);
@@ -80,5 +80,17 @@ public class Senet {
 
         }
 
+    }
+
+    public boolean isGameOver(GameState state) {
+        if (state.whiteStonesOut == 7) {
+            System.out.println("White player wins!");
+            return true;
+        }
+        if (state.blackStonesOut == 7) {
+            System.out.println("Black player wins!");
+            return true;
+        }
+        return false;
     }
 }
