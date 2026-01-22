@@ -1,22 +1,78 @@
 import structure.GameState;
 import structure.PlayGame;
+import structure.PlayerType;
+
+// public class Main {
+//     public static void main(String[] args) {
+//         GameState state = new GameState();
+//         Senet senetGame = new Senet();
+//         senetGame.getInitState(state);
+//         PlayGame game = new PlayGame(PlayerType.AI, PlayerType.AI);
+//         game.start(state);
+//         System.out.println("=== GAME OVER ===");
+//     }
+
+// }
+import java.util.Scanner;
+
+import Algorithms.AIConfig;
 
 public class Main {
 
     public static void main(String[] args) {
 
-        // 1. إنشاء حالة اللعبة
-        GameState state = new GameState();
+        try (Scanner scanner = new Scanner(System.in)) {
+            System.out.println("=== SENET GAME ===");
+            System.out.println("Select game mode:");
+            System.out.println("1) AI vs AI");
+            System.out.println("2) User vs AI (You play WHITE)");
+            System.out.println("3) AI vs User (You play BLACK)");
+            System.out.println("4) User vs User");
 
-        // 2. تهيئة الرقعة
-        Senet senet = new Senet();
-        senet.getInitState(state);
+            int choice = 0;
+            while (choice < 1 || choice > 4) {
+                System.out.print("Enter choice (1-4): ");
+                if (scanner.hasNextInt()) {
+                    choice = scanner.nextInt();
+                } else {
+                    scanner.next(); // discard invalid input
+                }
+            }
 
-        // 3. طباعة البداية
-        System.out.println("=== GAME START ===");
-        senet.printBoard(state);
+            PlayerType whitePlayer;
+            PlayerType blackPlayer;
 
-        // 4. تشغيل اللعبة
+            switch (choice) {
+                case 1 -> {
+                    whitePlayer = PlayerType.AI;
+                    blackPlayer = PlayerType.AI;
+                }
+                case 2 -> {
+                    whitePlayer = PlayerType.HUMAN;
+                    blackPlayer = PlayerType.AI;
+                }
+                case 3 -> {
+                    whitePlayer = PlayerType.AI;
+                    blackPlayer = PlayerType.HUMAN;
+                }
+                case 4 -> {
+                    whitePlayer = PlayerType.HUMAN;
+                    blackPlayer = PlayerType.HUMAN;
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + choice);
+            }
 
+            System.out.print("Enable AI analysis mode? (y/n): ");
+            AIConfig.ANALYSIS_MODE = scanner.next().equalsIgnoreCase("y");
+
+            GameState state = new GameState();
+            Senet senetGame = new Senet();
+            senetGame.getInitState(state);
+
+            PlayGame game = new PlayGame(whitePlayer, blackPlayer);
+            game.start(state);
+        }
+
+        System.out.println("=== GAME OVER ===");
     }
 }

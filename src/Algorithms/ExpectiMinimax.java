@@ -1,290 +1,198 @@
 package Algorithms;
+
 import structure.*;
-import java.util.ArrayList;
 import java.util.List;
 
 public class ExpectiMinimax {
 
-    private static final int MAX_DEPTH = 4; // Adjust based on performance needs
-    private static final double WIN_SCORE = 10000.0;
-    private static final double LOSE_SCORE = -10000.0;
+    public static final int MAX_DEPTH = 4;
 
-    /**
-     * Find the best move for the computer player using Expectiminimax
-     * @param state Current game state
-     * @param depth Search depth
-     * @return Best stone to move, or null if no valid moves
-     */
-    public static Stone findBestMove(GameState state, int depth) {
+    public static Stone findBestMove(GameState state, int steps, SearchStatistics stats) {
+        stats.reset();
+        boolean isMax = (state.currentPlayer == ColorType.WHITE);
+
+        double bestValue = isMax
+                ? Double.NEGATIVE_INFINITY
+                : Double.POSITIVE_INFINITY;
         Stone bestStone = null;
-        double bestValue = Double.NEGATIVE_INFINITY;
-        
-        ColorType player = state.currentPlayer;
-        List<Stone> playerStones = (player == ColorType.BLACK) ? 
-            state.blackStones : state.whiteStones;
 
-        // Try each possible move with each possible dice roll
-        for (int steps = 1; steps <= 5; steps++) {
-            double probability = MoveProbability.getProbability(steps);
-            
-            for (Stone stone : playerStones) {
-                if (stone.isOut) continue;
-                
-                // Check if this move is valid
-                if (!isValidMove(state, stone, steps)) continue;
-                
-                // Simulate the move
-                GameState newState = state.copy();
-                Stone newStone = findStoneInState(newState, stone);
-                
-                if (newStone == null) continue;
-                
-                MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode for simulation
-                
-                // Evaluate this move
-                double value = expectiminimax(newState, depth - 1, false) * probability;
-                
-                if (value > bestValue) {
-                    bestValue = value;
-                    bestStone = stone;
-                }
+        for (Stone stone : getCurrentPlayerStones(state)) {
+            if (!MoveLogic.isValidMove(state, stone, steps))
+                continue;
+
+            GameState newState = state.copy();
+            Stone newStone = findStoneInState(newState, stone);
+
+            MoveLogic.moveStone(newState, newStone, steps);
+
+            switchPlayer(newState);
+
+            double value = expectiminimax(newState, MAX_DEPTH - 1, stats);
+
+            stats.trace.add(
+                    "ROOT move stone " + stone.position + " → value=" + value);
+
+            if (isMax && value > bestValue) {
+                bestValue = value;
+                bestStone = stone;
+                stats.bestMoveValue = bestValue;
+            }
+            if (!isMax && value < bestValue) {
+                bestValue = value;
+                bestStone = stone;
+                stats.bestMoveValue = bestValue;
             }
         }
-        
+
         return bestStone;
     }
 
-    /**
-     * Expectiminimax recursive function
-     * @param state Current game state
-     * @param depth Remaining search depth
-     * @param isMaximizing True if maximizing player's turn
-     * @return Evaluated score
-     */
-    private static double expectiminimax(GameState state, int depth, boolean isMaximizing) {
-        
-        // Terminal conditions
+    private static double expectiminimax(GameState state, int depth, SearchStatistics stats) {
+        stats.nodesVisited++;
         if (depth == 0 || isTerminal(state)) {
-            return evaluate(state);
+            stats.terminalNodes++;
+            double eval = evaluate(state);
+            stats.trace.add("TERMINAL depth=" + depth + " eval=" + eval);
+            return eval;
         }
 
-        // Chance node - calculate expected value over all dice outcomes
-        return chanceNode(state, depth, isMaximizing);
+        return chanceNode(state, depth, stats);
     }
 
-    /**
-     * Chance node - handles probability of dice rolls
-     */
-    private static double chanceNode(GameState state, int depth, boolean isMaximizing) {
+    private static double chanceNode(GameState state, int depth, SearchStatistics stats) {
+        stats.chanceNodes++;
+        boolean isMax = (state.currentPlayer == ColorType.WHITE);
         double expectedValue = 0.0;
-        
-        // For each possible dice outcome
+
         for (int steps = 1; steps <= 5; steps++) {
             double probability = MoveProbability.getProbability(steps);
-            
-            if (isMaximizing) {
-                double value = maxNode(state, steps, depth);
-                expectedValue += probability * value;
+
+            double value;
+            if (isMax) {
+                value = maxNode(state, steps, depth, stats);
             } else {
-                double value = minNode(state, steps, depth);
-                expectedValue += probability * value;
+                value = minNode(state, steps, depth, stats);
             }
+
+            expectedValue += probability * value;
         }
-        
+
         return expectedValue;
     }
 
-    /**
-     * Maximizing node (computer's turn)
-     */
-    private static double maxNode(GameState state, int steps, int depth) {
-        double maxValue = Double.NEGATIVE_INFINITY;
-        boolean foundMove = false;
-        
-        List<Stone> stones = (state.currentPlayer == ColorType.BLACK) ? 
-            state.blackStones : state.whiteStones;
-        
-        for (Stone stone : stones) {
-            if (stone.isOut) continue;
-            
-            if (!isValidMove(state, stone, steps)) continue;
-            
+    private static double maxNode(GameState state, int steps, int depth, SearchStatistics stats) {
+        stats.maxNodes++;
+        double bestValue = Double.NEGATIVE_INFINITY;
+        boolean hasMove = false;
+
+        for (Stone stone : getCurrentPlayerStones(state)) {
+            if (!MoveLogic.isValidMove(state, stone, steps))
+                continue;
+
             GameState newState = state.copy();
             Stone newStone = findStoneInState(newState, stone);
-            
-            if (newStone == null) continue;
-            
-            MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode for simulation
-            newState.currentPlayer = (newState.currentPlayer == ColorType.BLACK) ? 
-                ColorType.WHITE : ColorType.BLACK;
-            
-            foundMove = true;
-            double value = expectiminimax(newState, depth - 1, false);
-            maxValue = Math.max(maxValue, value);
+
+            MoveLogic.moveStone(newState, newStone, steps);
+
+            switchPlayer(newState);
+
+            double value = expectiminimax(newState, depth - 1, stats);
+            bestValue = Math.max(bestValue, value);
+            hasMove = true;
         }
-        
-        // If no valid moves found, return current evaluation
-        if (!foundMove) {
-            return evaluate(state);
+
+        if (!hasMove) {
+            GameState passedState = state.copy();
+            switchPlayer(passedState);
+            return expectiminimax(passedState, depth - 1, stats);
         }
-        
-        return maxValue;
+
+        return bestValue;
     }
 
-    /**
-     * Minimizing node (opponent's turn)
-     */
-    private static double minNode(GameState state, int steps, int depth) {
-        double minValue = Double.POSITIVE_INFINITY;
-        boolean foundMove = false;
-        
-        List<Stone> stones = (state.currentPlayer == ColorType.BLACK) ? 
-            state.blackStones : state.whiteStones;
-        
-        for (Stone stone : stones) {
-            if (stone.isOut) continue;
-            
-            if (!isValidMove(state, stone, steps)) continue;
-            
+    private static double minNode(GameState state, int steps, int depth, SearchStatistics stats) {
+        stats.minNodes++;
+
+        double bestValue = Double.POSITIVE_INFINITY;
+        boolean hasMove = false;
+
+        for (Stone stone : getCurrentPlayerStones(state)) {
+            if (!MoveLogic.isValidMove(state, stone, steps))
+                continue;
+
             GameState newState = state.copy();
             Stone newStone = findStoneInState(newState, stone);
-            
-            if (newStone == null) continue;
-            
-            MoveLogic.moveStone(newState, newStone, steps, true); // Silent mode for simulation
-            newState.currentPlayer = (newState.currentPlayer == ColorType.BLACK) ? 
-                ColorType.WHITE : ColorType.BLACK;
-            
-            foundMove = true;
-            double value = expectiminimax(newState, depth - 1, true);
-            minValue = Math.min(minValue, value);
+
+            MoveLogic.moveStone(newState, newStone, steps);
+
+            switchPlayer(newState);
+
+            double value = expectiminimax(newState, depth - 1, stats);
+            bestValue = Math.min(bestValue, value);
+            hasMove = true;
         }
-        
-        // If no valid moves found, return current evaluation
-        if (!foundMove) {
-            return evaluate(state);
+
+        if (!hasMove) {
+            GameState passedState = state.copy();
+            switchPlayer(passedState);
+            return expectiminimax(passedState, depth - 1, stats);
         }
-        
-        return minValue;
+
+        return bestValue;
     }
 
-    /**
-     * Evaluation function for board state
-     */
     private static double evaluate(GameState state) {
-        // Terminal states
-        if (state.blackStonesOut == 7) return WIN_SCORE;
-        if (state.whiteStonesOut == 7) return LOSE_SCORE;
-        
+        if (state.whiteStonesOut == 7)
+            return +10000;
+        if (state.blackStonesOut == 7)
+            return -10000;
+
         double score = 0.0;
-        
-        // 1. Stones out (most important)
-        score += (state.blackStonesOut * 1000);
-        score -= (state.whiteStonesOut * 1000);
-        
-        // 2. Progress on board (further = better)
+
+        score += (state.whiteStonesOut - state.blackStonesOut) * 1000;
+
         for (Stone stone : state.blackStones) {
-            if (!stone.isOut) {
-                score += stone.position * 10;
-                
-                // Bonus for being close to exit
-                if (stone.position >= 26) score += 100;
-            }
-        }
-        
-        for (Stone stone : state.whiteStones) {
             if (!stone.isOut) {
                 score -= stone.position * 10;
-                
-                // Penalty if opponent close to exit
-                if (stone.position >= 26) score -= 100;
+                if (stone.position >= 26)
+                    score -= 100;
+                if (stone.position == SpecialSquares.water)
+                    score += 200;
             }
         }
-        
-        // 3. Special square considerations
-        for (Stone stone : state.blackStones) {
-            if (stone.isOut) continue;
-            
-            // Bonus for being on happiness square (26)
-            if (stone.position == SpecialSquares.happiness) {
-                score += 50;
-            }
-            
-            // Penalty for dangerous squares
-            if (stone.position == SpecialSquares.water) {
-                score -= 200;
-            }
-        }
-        
+
         for (Stone stone : state.whiteStones) {
-            if (stone.isOut) continue;
-            
-            if (stone.position == SpecialSquares.happiness) {
-                score -= 50;
-            }
-            
-            if (stone.position == SpecialSquares.water) {
-                score += 200;
+            if (!stone.isOut) {
+                score += stone.position * 10;
+                if (stone.position >= 26)
+                    score += 100;
+                if (stone.position == SpecialSquares.water)
+                    score -= 200;
             }
         }
-        
+
         return score;
     }
 
-    /**
-     * Check if move is valid
-     */
-    private static boolean isValidMove(GameState state, Stone stone, int steps) {
-        if (stone.isOut) return false;
-        
-        int newPos = stone.position + steps;
-        
-        // Check if exceeding board
-        if (newPos > 30) {
-            return true; // Valid - stone exits
-        }
-        
-        // Must stop at happiness square (26) first
-        if (stone.position < 26 && newPos > 26) {
-            return false;
-        }
-        
-        // Check special square rules
-        if (stone.position == SpecialSquares.threeTruths && steps != 3) {
-            return false;
-        }
-        
-        if (stone.position == SpecialSquares.reAtoum && steps != 2) {
-            return false;
-        }
-        
-        // Check if target square has same color stone
-        Stone target = state.board.stones[newPos];
-        if (target.color == stone.color) {
-            return false;
-        }
-        
-        return true;
-    }
-
-    /**
-     * Check if game is over
-     */
     private static boolean isTerminal(GameState state) {
-        return state.whiteStonesOut == 7 || state.blackStonesOut == 7;
+        return state.blackStonesOut == 7 || state.whiteStonesOut == 7;
     }
 
-    /**
-     * Find corresponding stone in copied state
-     */
-    private static Stone findStoneInState(GameState state, Stone originalStone) {
-        List<Stone> stones = (originalStone.color == ColorType.BLACK) ? 
-            state.blackStones : state.whiteStones;
-        
-        for (Stone s : stones) {
-            if (s.position == originalStone.position && 
-                s.color == originalStone.color && 
-                s.isOut == originalStone.isOut) {
+    private static void switchPlayer(GameState state) {
+        state.currentPlayer = (state.currentPlayer == ColorType.BLACK)
+                ? ColorType.WHITE
+                : ColorType.BLACK;
+    }
+
+    private static List<Stone> getCurrentPlayerStones(GameState state) {
+        return (state.currentPlayer == ColorType.BLACK)
+                ? state.blackStones
+                : state.whiteStones;
+    }
+
+    private static Stone findStoneInState(GameState state, Stone original) {
+        for (Stone s : getCurrentPlayerStones(state)) {
+            if (s.position == original.position && s.isOut == original.isOut) {
                 return s;
             }
         }
