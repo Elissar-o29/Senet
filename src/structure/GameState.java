@@ -101,5 +101,4 @@ public class GameState{
             return "[_ , " + stone.position + "]";
         }
     }
-
 }
